@@ -68,12 +68,12 @@ def setup(dirpath):
     zipdir = os.path.join(dirpath, 'chromium')
     platform_name = platform.system()
 
-    """ ------ Get revision -----------------------------------------------------------------------------------------"""
+    """ ------ Get revision ---------------------------------------------------------------------------------------- """
 
     revision = requests.get(f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/'
                             f'{prefix_by_platform[platform_name]}%2FLAST_CHANGE?alt=media').content.decode()
 
-    """ ------ Get binary-- -----------------------------------------------------------------------------------------"""
+    """ ------ Get binary -------------------------------------------------------------------------------------------"""
 
     chromebinary_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
                         f'{prefix_by_platform[platform_name]}%2F{revision}' \
@@ -87,7 +87,7 @@ def setup(dirpath):
     with zipfile.ZipFile(chromebinary_zippath, 'r') as zip_ref:
         zip_ref.extractall(chromebinary_dir)
 
-    """ ------ Get driver -------------------------------------------------------------------------------------------"""
+    """ ------ Get driver ------------------------------------------------------------------------------------------ """
 
     chromedriver_version = requests.get('https://chromedriver.storage.googleapis.com/LATEST_RELEASE').content.decode()
     chromedriver_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
@@ -102,7 +102,7 @@ def setup(dirpath):
     with zipfile.ZipFile(chromedriver_zippath, 'r') as zip_ref:
         zip_ref.extractall(chromedriver_dir)
 
-    """ ------ Output and add to config -----------------------------------------------------------------------------"""
+    """ ------ Output and add to config ---------------------------------------------------------------------------- """
 
     binary_path = os.path.join(zipdir, 'chromebinary', binary_path_by_platform[platform_name])
     driver_path = os.path.join(zipdir, 'chromedriver', driver_path_by_platform[platform_name])
