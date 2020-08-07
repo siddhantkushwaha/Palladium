@@ -73,7 +73,7 @@ def setup(dirpath):
     revision = requests.get(f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/'
                             f'{prefix_by_platform[platform_name]}%2FLAST_CHANGE?alt=media').content.decode()
 
-    """ ------ Get binary -------------------------------------------------------------------------------------------"""
+    """ ------ Get binary ------------------------------------------------------------------------------------------ """
 
     chromebinary_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
                         f'{prefix_by_platform[platform_name]}%2F{revision}' \
