@@ -11,8 +11,6 @@ Package also comes with a class called **CustomChrome** which is a wrapper on **
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/palladium-python.svg)](https://pypi.python.org/pypi/palladium-python)
 [![PyPI status](https://img.shields.io/pypi/status/palladium-python.svg)](https://pypi.python.org/pypi/palladium-python)
 
-[![GitHub commits](https://img.shields.io/github/commits-since/Naereen/StrapDown.js/v1.0.0.svg)](https://GitHub.com/Naereen/StrapDown.js/commit/)
-
 ## How to install
 
     pip install palladium-python
