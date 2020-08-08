@@ -11,9 +11,11 @@ from palladium import params
 
 
 class ChromeCustom(Chrome):
-    logs_dir = os.path.join(params.project_dir, 'logs')
+    logs_dir = os.path.join('.', 'logs')
 
-    def __init__(self, headless=True):
+    def __init__(self, headless=True, logs_dir=None):
+        self.logs_dir = os.path.join(os.getcwd() if logs_dir is None else logs_dir, 'logs')
+
         chrome_options = ChromeOptions()
 
         if headless:

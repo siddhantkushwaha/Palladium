@@ -1,13 +1,14 @@
 import os
 import json
+import stat
 import zipfile
 import platform
 
+import requests
 from dateutil.parser import parse
 from datetime import datetime
-
-import requests
 from viper.download import download
+from viper.common import chmod
 
 
 def setup(dirpath):
@@ -26,7 +27,6 @@ def setup(dirpath):
     current_time = datetime.now()
 
     if modified_time is not None and (current_time - modified_time).days < 30:
-        print('Skipping setup.')
         return
 
     config['modified_time'] = current_time.isoformat()
@@ -89,7 +89,6 @@ def setup(dirpath):
 
     """ ------ Get driver ------------------------------------------------------------------------------------------ """
 
-    chromedriver_version = requests.get('https://chromedriver.storage.googleapis.com/LATEST_RELEASE').content.decode()
     chromedriver_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
                         f'{prefix_by_platform[platform_name]}%2F{revision}' \
                         f'%2Fchromedriver_{driver_id_by_platform[platform_name]}.zip?alt=media'
@@ -101,6 +100,14 @@ def setup(dirpath):
     download(link=chromedriver_link, path=zipdir, filename=chromedriver_zipname)
     with zipfile.ZipFile(chromedriver_zippath, 'r') as zip_ref:
         zip_ref.extractall(chromedriver_dir)
+
+    """ ------ Change permissions, remove zips --------------------------------------------------------------------- """
+
+    # TODO check if this will work on windows or not
+    chmod(zipdir, stat.S_IRWXU)
+
+    os.remove(chromebinary_zippath)
+    os.remove(chromedriver_zippath)
 
     """ ------ Output and add to config ---------------------------------------------------------------------------- """
 
