@@ -21,6 +21,6 @@ six==1.15.0
 tqdm==4.48.2
 twine==3.2.0
 urllib3==1.25.10
-viper-python==0.1.1
+viper-python==0.1.3
 webencodings==0.5.1
 zipp==3.1.0

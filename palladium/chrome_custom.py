@@ -11,10 +11,15 @@ from palladium import params
 
 
 class ChromeCustom(Chrome):
-    logs_dir = os.path.join('.', 'logs')
 
-    def __init__(self, headless=True, logs_dir=None):
+    def __init__(
+            self,
+            headless=True,
+            logs_dir=None,
+            log_error=False
+    ):
         self.logs_dir = os.path.join(os.getcwd() if logs_dir is None else logs_dir, 'logs')
+        self.log_error = log_error
 
         chrome_options = ChromeOptions()
 
@@ -61,9 +66,10 @@ class ChromeCustom(Chrome):
             except Exception as exp:
                 time.sleep(wait_time)
                 if i + 1 == total_attempts:
-                    logging.exception(exp)
-                    name = ''.join([str(i) for i in [random.randint(0, 9) for j in range(12)]])
-                    self.get_screenshot_as_file(os.path.join(self.logs_dir, f'screenshot_{name}.png'))
+                    if self.log_error:
+                        logging.exception(exp)
+                        name = ''.join([str(i) for i in [random.randint(0, 9) for j in range(12)]])
+                        self.get_screenshot_as_file(os.path.join(self.logs_dir, f'screenshot_{name}.png'))
                     raise Exception(f'Attempt failed for method. {method}')
 
     def highlight(self, element, color='red', border=5, effect_time=5):
