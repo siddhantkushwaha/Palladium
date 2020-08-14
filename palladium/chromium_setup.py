@@ -10,10 +10,11 @@ from datetime import datetime
 from viper.download import download
 from viper.common import chmod
 
+from palladium.util import is_colab
+
 
 def setup(dirpath):
     """ ------ Read config/state ----------------------------------------------------------------------------------- """
-
     try:
         with open(os.path.join(dirpath, 'config.json'), 'r') as config_fp:
             config = json.load(config_fp)
@@ -29,8 +30,22 @@ def setup(dirpath):
     if modified_time is not None and (current_time - modified_time).days < 30:
         return
 
-    config['modified_time'] = current_time.isoformat()
+    if is_colab():
+        colab(dirpath)
+    else:
+        shell(dirpath)
 
+
+def colab(dirpath):
+    """ ------ Install --------------------------------------------------------------------------------------------- """
+    os.system('apt-get update')
+    os.system('apt install chromium-chromedriver')
+
+    """ ------ Write config ---------------------------------------------------------------------------------------- """
+    write_config(dirpath, '/usr/lib/chromium-browser/chromium-browser', '/usr/lib/chromium-browser/chromedriver')
+
+
+def shell(dirpath):
     """ ------ Harcoded values for different formats :/ ------------------------------------------------------------ """
 
     binary_id_by_platform = {
@@ -64,17 +79,14 @@ def setup(dirpath):
     }
 
     """ ------ Begin download and extraction ----------------------------------------------------------------------- """
-
     zipdir = os.path.join(dirpath, 'chromium')
     platform_name = platform.system()
 
     """ ------ Get revision ---------------------------------------------------------------------------------------- """
-
     revision = requests.get(f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/'
                             f'{prefix_by_platform[platform_name]}%2FLAST_CHANGE?alt=media').content.decode()
 
     """ ------ Get binary ------------------------------------------------------------------------------------------ """
-
     chromebinary_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
                         f'{prefix_by_platform[platform_name]}%2F{revision}' \
                         f'%2Fchrome-{binary_id_by_platform[platform_name]}.zip?alt=media'
@@ -88,7 +100,6 @@ def setup(dirpath):
         zip_ref.extractall(chromebinary_dir)
 
     """ ------ Get driver ------------------------------------------------------------------------------------------ """
-
     chromedriver_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
                         f'{prefix_by_platform[platform_name]}%2F{revision}' \
                         f'%2Fchromedriver_{driver_id_by_platform[platform_name]}.zip?alt=media'
@@ -102,23 +113,23 @@ def setup(dirpath):
         zip_ref.extractall(chromedriver_dir)
 
     """ ------ Change permissions, remove zips --------------------------------------------------------------------- """
-
-    # TODO check if this will work on windows or not
     chmod(zipdir, stat.S_IRWXU)
 
     os.remove(chromebinary_zippath)
     os.remove(chromedriver_zippath)
 
     """ ------ Output and add to config ---------------------------------------------------------------------------- """
-
     binary_path = os.path.join(zipdir, 'chromebinary', binary_path_by_platform[platform_name])
     driver_path = os.path.join(zipdir, 'chromedriver', driver_path_by_platform[platform_name])
 
+    write_config(dirpath, binary_path, driver_path)
+
+
+def write_config(dirpath, binary_path, driver_path):
     print(f'Binary path => {binary_path}')
     print(f'Driver path => {driver_path}')
 
-    config['chromebinary'] = binary_path
-    config['chromedriver'] = driver_path
+    config = {'modified_time': datetime.now().isoformat(), 'chromebinary': binary_path, 'chromedriver': driver_path}
 
     with open(os.path.join(dirpath, 'config.json'), 'w') as config_fp:
         json.dump(config, config_fp)
