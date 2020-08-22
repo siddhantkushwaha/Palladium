@@ -28,7 +28,9 @@ class ChromeCustom(Chrome):
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.binary_location = params.chromebinary
+        
+        if params.chromebinary is not None:
+            chrome_options.binary_location = params.chromebinary
 
         super().__init__(params.chromedriver, options=chrome_options)
 
