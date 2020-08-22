@@ -9,6 +9,6 @@ setup(module_dir)
 
 with open(os.path.join(module_dir, 'config.json'), 'r') as fp:
     config = json.load(fp)
-
-chromebinary = config['chromebinary']
+    
+chromebinary = config.get('chromebinary', None)
 chromedriver = config['chromedriver']
