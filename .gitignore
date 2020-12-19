@@ -2,3 +2,4 @@ dist
 palladium_python.egg-info
 palladium/config.json
 palladium/chromium
+assets

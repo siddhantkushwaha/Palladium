@@ -25,7 +25,7 @@ def read_state(dirpath):
 
 
 def write_state(dirpath, binary_path, driver_path):
-    config = {'modified_time': datetime.now().isoformat(), 'chromebinary': binary_path, 'chromedriver': driver_path}
+    config = {'modified_time': datetime.now().isoformat(), 'chromium': binary_path, 'chromedriver': driver_path}
     with open(os.path.join(dirpath, 'state.json'), 'w') as config_fp:
         json.dump(config, config_fp)
 
@@ -154,22 +154,22 @@ def shell(dir_path):
 
     """ -------------------------------------------- Return paths -------------------------------------------------- """
     binary_path_by_platform = {
-        'Windows': os.path.join('chromium', 'chrome.exe'),
-        'Linux': os.path.join('chromium', 'chrome'),
-        'Darwin': os.path.join('chromium', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
+        'Windows': os.path.join('chrome-win', 'chrome.exe'),
+        'Linux': os.path.join('chrome-linux', 'chrome'),
+        'Darwin': os.path.join('chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
     }
 
     driver_path_by_platform = {
-        'Windows': os.path.join('chromedriver', 'chromedriver.exe'),
-        'Linux': os.path.join('chromedriver', 'chromedriver'),
-        'Darwin': os.path.join('chromedriver', 'chromedriver'),
+        'Windows': os.path.join('chromedriver_win32', 'chromedriver.exe'),
+        'Linux': os.path.join('chromedriver_linux64', 'chromedriver'),
+        'Darwin': os.path.join('chromedriver_mac64', 'chromedriver'),
     }
 
-    binary_path = os.path.join(zipdir, 'chromebinary', binary_path_by_platform[platform_name])
+    binary_path = os.path.join(zipdir, 'chromium', binary_path_by_platform[platform_name])
     driver_path = os.path.join(zipdir, 'chromedriver', driver_path_by_platform[platform_name])
 
-    return binary_path, driver_path
+    return os.path.abspath(binary_path), os.path.abspath(driver_path)
 
 
 if __name__ == '__main__':
-    setup('.')
+    setup('.', start_over=True)

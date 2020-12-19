@@ -7,8 +7,8 @@ module_dir = os.path.dirname(os.path.realpath(__file__))
 
 setup(module_dir)
 
-with open(os.path.join(module_dir, 'config.json'), 'r') as fp:
+with open(os.path.join(module_dir, 'assets', 'state.json'), 'r') as fp:
     config = json.load(fp)
-    
-chromebinary = config.get('chromebinary', None)
+
+chromebinary = config.get('chromium', None)
 chromedriver = config['chromedriver']
