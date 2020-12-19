@@ -1,27 +1,43 @@
 import os
 import json
 import stat
+import shutil
 import zipfile
 import platform
 
-import requests
-from dateutil.parser import parse
 from datetime import datetime
+from dateutil.parser import parse
+
+import requests
+import pandas as pd
 from viper.download import download
 from viper.common import chmod
 
-from palladium.util import is_colab
 
-
-def setup(dirpath):
-    """ ------ Read config/state ----------------------------------------------------------------------------------- """
+def read_state(dirpath):
     try:
-        with open(os.path.join(dirpath, 'config.json'), 'r') as config_fp:
+        with open(os.path.join(dirpath, 'state.json'), 'r') as config_fp:
             config = json.load(config_fp)
     except:
         config = {}
 
-    modified_time = config.get('modified_time', None)
+    return config
+
+
+def write_state(dirpath, binary_path, driver_path):
+    config = {'modified_time': datetime.now().isoformat(), 'chromebinary': binary_path, 'chromedriver': driver_path}
+    with open(os.path.join(dirpath, 'state.json'), 'w') as config_fp:
+        json.dump(config, config_fp)
+
+
+def setup(path, start_over=False):
+    dirpath = os.path.join(path, 'assets')
+    if start_over and os.path.exists(dirpath):
+        shutil.rmtree(dirpath)
+
+    state = read_state(dirpath)
+
+    modified_time = state.get('modified_time', None)
     if modified_time is not None:
         modified_time = parse(modified_time)
 
@@ -30,35 +46,44 @@ def setup(dirpath):
     if modified_time is not None and (current_time - modified_time).days < 30:
         return
 
-    if is_colab():
-        colab(dirpath)
-    else:
-        shell(dirpath)
+    binary_pt, driver_pt = shell(dirpath)
+
+    write_state(dirpath, binary_pt, driver_pt)
 
 
-def colab(dirpath):
-    """ ------ Install --------------------------------------------------------------------------------------------- """
-    os.system('apt-get update')
-    os.system('apt install chromium-chromedriver')
-
-    """ ------ Write config ---------------------------------------------------------------------------------------- """
-    write_config(dirpath, '/usr/lib/chromium-browser/chromium-browser', '/usr/lib/chromium-browser/chromedriver')
-
-
-def shell(dirpath):
-    """ ------ Harcoded values for different formats :/ ------------------------------------------------------------ """
-
-    binary_id_by_platform = {
-        'Darwin': 'mac',
+def get_revision(platform_name):
+    os_set = {
         'Linux': 'linux',
-        'Windows': 'win',
+        'Darwin': 'mac',
+        'Windows': 'win'
     }
 
-    driver_id_by_platform = {
-        'Darwin': 'mac64',
-        'Linux': 'linux64',
-        'Windows': 'win32',
-    }
+    by_platform = os_set.get(platform_name)
+    if by_platform is None:
+        raise Exception(f'Platform type {platform_name} not supported.')
+
+    url = 'https://omahaproxy.appspot.com/all?csv=1'
+    revisions = pd.read_csv(url)
+
+    # stable builds are not available :/
+    # canary is too buggy
+    revisions = revisions[(revisions['channel'] == 'beta')]
+
+    revisions = revisions[revisions['os'] == by_platform]
+
+    if len(revisions) < 1:
+        raise Exception(f'No revision found to download for {platform_name}.')
+
+    revision = min(revisions['branch_base_position'])
+
+    if int(revision) != revision:
+        raise Exception(f'Invalid revision - {revision}')
+
+    return int(revision)
+
+
+def shell(dir_path):
+    """ ------ Harcoded values for different formats :/ ------------------------------------------------------------ """
 
     prefix_by_platform = {
         'Darwin': 'Mac',
@@ -66,73 +91,84 @@ def shell(dirpath):
         'Windows': 'Win',
     }
 
-    binary_path_by_platform = {
-        'Windows': os.path.join('chrome-win', 'chrome.exe'),
-        'Linux': os.path.join('chrome-linux', 'chrome'),
-        'Darwin': os.path.join('chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
-    }
+    platform_info = platform.uname()
+    platform_name = platform_info.system
 
-    driver_path_by_platform = {
-        'Windows': os.path.join('chromedriver_win32', 'chromedriver.exe'),
-        'Linux': os.path.join('chromedriver_linux64', 'chromedriver'),
-        'Darwin': os.path.join('chromedriver_mac64', 'chromedriver'),
-    }
+    prefix = prefix_by_platform[platform_name]
+    revision = get_revision(platform_name)
 
-    """ ------ Begin download and extraction ----------------------------------------------------------------------- """
-    zipdir = os.path.join(dirpath, 'chromium')
-    platform_name = platform.system()
+    index_url = f'http://commondatastorage.googleapis.com/' \
+                f'chromium-browser-snapshots/index.html?prefix={prefix}/{revision}/'
 
-    """ ------ Get revision ---------------------------------------------------------------------------------------- """
-    revision = requests.get(f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/'
-                            f'{prefix_by_platform[platform_name]}%2FLAST_CHANGE?alt=media').content.decode()
+    storage_api_url = f'https://www.googleapis.com/' \
+                      f'storage/v1/b/chromium-browser-snapshots/o?delimiter=/&prefix={prefix}/{revision}/' \
+                      f'&fields=items(kind,mediaLink,metadata,name,size,updated),kind,prefixes,nextPageToken'
 
-    """ ------ Get binary ------------------------------------------------------------------------------------------ """
-    chromebinary_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
-                        f'{prefix_by_platform[platform_name]}%2F{revision}' \
-                        f'%2Fchrome-{binary_id_by_platform[platform_name]}.zip?alt=media'
+    storage_api_data = requests.get(storage_api_url).content
+    storage_api_data = json.loads(storage_api_data.decode())
+    storage_api_data = storage_api_data.get('items')
 
-    chromebinary_zipname = f'chromium_{platform_name}.zip'
+    if storage_api_data is None:
+        raise Exception('No information found from storage api location.')
+
+    storage_api_info = pd.DataFrame(storage_api_data)
+
+    # filter out useless binaries
+    storage_api_info = storage_api_info[(storage_api_info['name'].str.contains('chrome'))
+                                        & (~storage_api_info['name'].str.contains('sym'))]
+
+    chromium_binaries = storage_api_info[~storage_api_info['name'].str.contains('driver')]
+    if len(chromium_binaries) < 1:
+        raise Exception(f'No binaries found for revision {revision}.')
+
+    chromedriver_binaries = storage_api_info[storage_api_info['name'].str.contains('driver')]
+    if len(chromedriver_binaries) < 1:
+        raise Exception(f'No chromedriver found for revision {revision}.')
+
+    chromium_download_link = list(chromium_binaries['mediaLink'])[0]
+    chromedriver_download_link = list(chromedriver_binaries['mediaLink'])[0]
+
+    """ ------------------------------------------ Begin download and extraction ----------------------------------- """
+    zipdir = os.path.join(dir_path, 'chromium')
+
+    chromebinary_zipname = 'chromium.zip'
     chromebinary_zippath = os.path.join(zipdir, chromebinary_zipname)
-    chromebinary_dir = os.path.join(zipdir, 'chromebinary')
+    chromebinary_dir = os.path.join(zipdir, 'chromium')
 
-    download(link=chromebinary_link, path=zipdir, filename=chromebinary_zipname)
+    download(link=chromium_download_link, path=zipdir, filename=chromebinary_zipname)
     with zipfile.ZipFile(chromebinary_zippath, 'r') as zip_ref:
         zip_ref.extractall(chromebinary_dir)
 
-    """ ------ Get driver ------------------------------------------------------------------------------------------ """
-    chromedriver_link = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/' \
-                        f'{prefix_by_platform[platform_name]}%2F{revision}' \
-                        f'%2Fchromedriver_{driver_id_by_platform[platform_name]}.zip?alt=media'
-
-    chromedriver_zipname = f'chromedriver_{platform_name}.zip'
+    chromedriver_zipname = f'chromedriver.zip'
     chromedriver_zippath = os.path.join(zipdir, chromedriver_zipname)
     chromedriver_dir = os.path.join(zipdir, 'chromedriver')
 
-    download(link=chromedriver_link, path=zipdir, filename=chromedriver_zipname)
+    download(link=chromedriver_download_link, path=zipdir, filename=chromedriver_zipname)
     with zipfile.ZipFile(chromedriver_zippath, 'r') as zip_ref:
         zip_ref.extractall(chromedriver_dir)
 
-    """ ------ Change permissions, remove zips --------------------------------------------------------------------- """
     chmod(zipdir, stat.S_IRWXU)
 
     os.remove(chromebinary_zippath)
     os.remove(chromedriver_zippath)
 
-    """ ------ Output and add to config ---------------------------------------------------------------------------- """
+    """ -------------------------------------------- Return paths -------------------------------------------------- """
+    binary_path_by_platform = {
+        'Windows': os.path.join('chromium', 'chrome.exe'),
+        'Linux': os.path.join('chromium', 'chrome'),
+        'Darwin': os.path.join('chromium', 'Chromium.app', 'Contents', 'MacOS', 'Chromium')
+    }
+
+    driver_path_by_platform = {
+        'Windows': os.path.join('chromedriver', 'chromedriver.exe'),
+        'Linux': os.path.join('chromedriver', 'chromedriver'),
+        'Darwin': os.path.join('chromedriver', 'chromedriver'),
+    }
+
     binary_path = os.path.join(zipdir, 'chromebinary', binary_path_by_platform[platform_name])
     driver_path = os.path.join(zipdir, 'chromedriver', driver_path_by_platform[platform_name])
 
-    write_config(dirpath, binary_path, driver_path)
-
-
-def write_config(dirpath, binary_path, driver_path):
-    print(f'Binary path => {binary_path}')
-    print(f'Driver path => {driver_path}')
-
-    config = {'modified_time': datetime.now().isoformat(), 'chromebinary': binary_path, 'chromedriver': driver_path}
-
-    with open(os.path.join(dirpath, 'config.json'), 'w') as config_fp:
-        json.dump(config, config_fp)
+    return binary_path, driver_path
 
 
 if __name__ == '__main__':
