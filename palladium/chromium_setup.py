@@ -1,17 +1,16 @@
-import os
 import json
-import stat
-import shutil
-import zipfile
+import os
 import platform
-
+import shutil
+import stat
+import zipfile
 from datetime import datetime
-from dateutil.parser import parse
 
-import requests
 import pandas as pd
-from viper.download import download
+import requests
+from dateutil.parser import parse
 from viper.common import chmod
+from viper.download import download
 
 
 def read_state(dirpath):
@@ -51,37 +50,6 @@ def setup(path, start_over=False):
     write_state(dirpath, binary_pt, driver_pt)
 
 
-def get_revision(platform_name):
-    os_set = {
-        'Linux': 'linux',
-        'Darwin': 'mac',
-        'Windows': 'win'
-    }
-
-    by_platform = os_set.get(platform_name)
-    if by_platform is None:
-        raise Exception(f'Platform type {platform_name} not supported.')
-
-    url = 'https://omahaproxy.appspot.com/all?csv=1'
-    revisions = pd.read_csv(url)
-
-    # stable builds are not available :/
-    # canary is too buggy
-    revisions = revisions[(revisions['channel'] == 'beta')]
-
-    revisions = revisions[revisions['os'] == by_platform]
-
-    if len(revisions) < 1:
-        raise Exception(f'No revision found to download for {platform_name}.')
-
-    revision = min(revisions['branch_base_position'])
-
-    if int(revision) != revision:
-        raise Exception(f'Invalid revision - {revision}')
-
-    return int(revision)
-
-
 def shell(dir_path):
     """ ------ Harcoded values for different formats :/ ------------------------------------------------------------ """
 
@@ -95,10 +63,13 @@ def shell(dir_path):
     platform_name = platform_info.system
 
     prefix = prefix_by_platform[platform_name]
-    revision = get_revision(platform_name)
 
-    index_url = f'http://commondatastorage.googleapis.com/' \
-                f'chromium-browser-snapshots/index.html?prefix={prefix}/{revision}/'
+    # web api - do not delete
+    # index_url = f'http://commondatastorage.googleapis.com/' \
+    #             f'chromium-browser-snapshots/index.html?prefix={prefix}/{revision}/'
+
+    last_change = f'https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/{prefix}%2FLAST_CHANGE?alt=media'
+    revision = int(requests.get(last_change).content)
 
     storage_api_url = f'https://www.googleapis.com/' \
                       f'storage/v1/b/chromium-browser-snapshots/o?delimiter=/&prefix={prefix}/{revision}/' \

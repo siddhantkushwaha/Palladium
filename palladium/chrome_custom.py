@@ -1,8 +1,7 @@
-import os
-import time
-import random
 import logging
-
+import os
+import random
+import time
 from collections import Sized
 
 from selenium.webdriver import Chrome, ChromeOptions
@@ -16,7 +15,8 @@ class ChromeCustom(Chrome):
             self,
             headless=True,
             logs_dir=None,
-            log_error=False
+            log_error=False,
+            chromedriver=None
     ):
         self.logs_dir = os.path.join(os.getcwd() if logs_dir is None else logs_dir, 'logs')
         self.log_error = log_error
@@ -28,11 +28,13 @@ class ChromeCustom(Chrome):
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument("--window-size=1920,1080")
-        
-        if params.chromebinary is not None:
-            chrome_options.binary_location = params.chromebinary
 
-        super().__init__(params.chromedriver, options=chrome_options)
+        if chromedriver is None:
+            chromedriver = params.chromedriver
+            if params.chromebinary is not None:
+                chrome_options.binary_location = params.chromebinary
+
+        super().__init__(chromedriver, options=chrome_options)
 
     def __del__(self):
         try:
