@@ -1,3 +1,12 @@
+"""
+
+How to upload to pypi
+
+ - python setup.py sdist
+ - twine upload dist/*
+
+"""
+
 import pathlib
 from distutils.core import setup
 
