@@ -8,6 +8,7 @@ How to upload to pypi
 """
 
 import pathlib
+import setuptools
 from distutils.core import setup
 
 HERE = pathlib.Path(__file__).parent
@@ -16,13 +17,13 @@ README = (HERE / "README.md").read_text()
 setup(
     name='palladium-python',
     packages=['palladium'],
-    version='1.0.0',
+    version='1.0.1',
     license='MIT',
     description='Common utility functions.',
     author='Siddhant Kushwaha',
     author_email='k16.siddhant@gmail.com',
     url='https://github.com/siddhantkushwaha/palladium',
-    download_url='https://github.com/siddhantkushwaha/palladium/archive/1.0.0.tar.gz',
+    download_url='https://github.com/siddhantkushwaha/palladium/archive/1.0.1.tar.gz',
     keywords=['CHROMIUM', 'SELENIUM', 'AUTOMATION', 'TESTING'],
     install_requires=[
         'pandas',
