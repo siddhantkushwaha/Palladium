@@ -16,13 +16,13 @@ README = (HERE / "README.md").read_text()
 setup(
     name='palladium-python',
     packages=['palladium'],
-    version='0.1.6',
+    version='1.0.0',
     license='MIT',
     description='Common utility functions.',
     author='Siddhant Kushwaha',
     author_email='k16.siddhant@gmail.com',
     url='https://github.com/siddhantkushwaha/palladium',
-    download_url='https://github.com/siddhantkushwaha/palladium/archive/0.1.6.tar.gz',
+    download_url='https://github.com/siddhantkushwaha/palladium/archive/1.0.0.tar.gz',
     keywords=['CHROMIUM', 'SELENIUM', 'AUTOMATION', 'TESTING'],
     install_requires=[
         'pandas',
